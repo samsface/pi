@@ -1,2 +1,0 @@
-/home/pi/drone/Examples/Servo/Servo.cpp
-/home/pi/.vimrc

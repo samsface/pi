@@ -2,4 +2,6 @@
 .bash_logout
 .bashrc
 .profile
+.cache
+.viminfo
 .ssh
