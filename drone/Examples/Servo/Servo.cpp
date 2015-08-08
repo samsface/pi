@@ -13,39 +13,58 @@ make
 ./Servo
 */
 
-#define NAVIO_RCOUTPUT_1 3
-#define SERVO_MIN 1.250 /*mS*/
-#define SERVO_MAX 1.750 /*mS*/
-
 #include <Navio/gpio.h>
 #include "Navio/PCA9685.h"
+#include <iostream>
 
 using namespace Navio;
 
-int main()
+class servo
 {
-    static const uint8_t outputEnablePin = RPI_GPIO_27;
+   float _minPWMmS, _maxPWMmS, _currentPWMmS;
+public:   
+   servo(float minPWMmS, float maxPWMmS) : 
+   _minPWMmS(minPWMmS), 
+   _maxPWMmS(maxPWMmS),
+   _currentPWMmS(_minPWMmS) {}
 
-    Pin pin(outputEnablePin);
+   //servo() : servo(1.250, 1.340) {}
+};
 
-    if (pin.init()) {
-        pin.setMode(Pin::GpioModeOutput);
-        pin.write(0); /* drive Output Enable low */
-    } else {
-        fprintf(stderr, "Output Enable not set. Are you root?");
-    }
+class servoRail
+{
+   std::string _error;
 
-    PCA9685 pwm;
+   servoRail() {
+      Pin pin(RPI_GPIO_27);
+      if(pin.init()) {
+         pin.setMode(Pin::GpioModeOutput);
+         pin.write(0);
+      
+         PCA9685 pwm;
+         pwm.initialize();
+         pwm.setFrequency(50);
+      }
+      else {
+         _error = "Could not init pin driver. Are you root?";
+      }
+   }
 
-    pwm.initialize();
-    pwm.setFrequency(50);
+public:
+   static servoRail& instance() {
+      static servoRail i;
+      return i;
+   }
 
-    while (true) {
-        pwm.setPWMmS(NAVIO_RCOUTPUT_1, SERVO_MIN);
-        sleep(1);
-        pwm.setPWMmS(NAVIO_RCOUTPUT_1, SERVO_MAX);
-        sleep(1);
-    }
+   const std::string& error() const { return _error; } 
+};
 
-    return 0;
+int main() {
+   servoRail& sr = servoRail::instance();
+   if(!sr.error().empty()) {
+      std::cout << sr.error() << std::endl;
+      return 0;
+   }
+
+   return 0;
 }
