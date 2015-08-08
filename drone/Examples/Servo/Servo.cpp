@@ -29,15 +29,18 @@ class servo
    float _minPWMms, _maxPWMms, _currentPWMms;
    std::string _error;
 public:   
-   servo(int rcOut, float minPWMms, float maxPWMms) :
+   servo(int rcOut, float minPWMms, float maxPWMms, const PCA9685& pwm) :
    _rcOut(rcOut), 
    _minPWMms(minPWMms), 
    _maxPWMms(maxPWMms),
-   _currentPWMms(_minPWMms) {}
+   _currentPWMms(_minPWMms),
+   _pwm(pwm) {}
  
    void setPower(float p) {
-      if(!_error.empty())
+      if(!_error.empty()) {
+         std::cout << _error << std::endl;
          return;
+      }
       if(p > 1) p = 1;
       if(p < 0) p = 0;
       _currentPWMms = _minPWMms + (_maxPWMms-_minPWMms)*p;
@@ -70,7 +73,7 @@ class servoRail
 
          auto rcOutputs = { 4, 5, 6, 7};
          for(auto s : rcOutputs) 
-            _servos.push_back(std::move(servo(s, 1.250, 1.340)));
+            _servos.push_back(std::move(servo(s+2, 1.250, 1.340, pwm)));
       }
       else {
          _error = "Could not init pin driver. Are you root?";
@@ -95,7 +98,10 @@ int main() {
       return 0;
    }
 
-   sr[0].rev(0.5);
+   sr[0].rev(1);
+   sr[1].rev(1);
+   sr[2].rev(1);
+   sr[3].rev(1);
 
    return 0;
 }
