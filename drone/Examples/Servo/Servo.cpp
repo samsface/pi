@@ -16,23 +16,46 @@ make
 #include <Navio/gpio.h>
 #include "Navio/PCA9685.h"
 #include <iostream>
+#include <vector>
+#include <thread>
+#include <chrono>
 
 using namespace Navio;
 
 class servo
 {
-   float _minPWMmS, _maxPWMmS, _currentPWMmS;
+   PCA9685 _pwm;
+   int _rcOut;
+   float _minPWMms, _maxPWMms, _currentPWMms;
+   std::string _error;
 public:   
-   servo(float minPWMmS, float maxPWMmS) : 
-   _minPWMmS(minPWMmS), 
-   _maxPWMmS(maxPWMmS),
-   _currentPWMmS(_minPWMmS) {}
+   servo(int rcOut, float minPWMms, float maxPWMms) :
+   _rcOut(rcOut), 
+   _minPWMms(minPWMms), 
+   _maxPWMms(maxPWMms),
+   _currentPWMms(_minPWMms) {}
+ 
+   void setPower(float p) {
+      if(!_error.empty())
+         return;
+      if(p > 1) p = 1;
+      if(p < 0) p = 0;
+      _currentPWMms = _minPWMms + (_maxPWMms-_minPWMms)*p;
+      _pwm.setPWMmS(_rcOut, _currentPWMms);    
+   }
 
-   //servo() : servo(1.250, 1.340) {}
+   void rev(float p) {
+      setPower(p);
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      setPower(0);
+   }
+
+   const std::string& error() const { return _error; } 
 };
 
 class servoRail
 {
+   std::vector<servo> _servos;
    std::string _error;
 
    servoRail() {
@@ -40,10 +63,14 @@ class servoRail
       if(pin.init()) {
          pin.setMode(Pin::GpioModeOutput);
          pin.write(0);
-      
-         PCA9685 pwm;
+   
+         PCA9685 pwm;   
          pwm.initialize();
          pwm.setFrequency(50);
+
+         auto rcOutputs = { 4, 5, 6, 7};
+         for(auto s : rcOutputs) 
+            _servos.push_back(std::move(servo(s, 1.250, 1.340)));
       }
       else {
          _error = "Could not init pin driver. Are you root?";
@@ -56,6 +83,8 @@ public:
       return i;
    }
 
+   servo& operator[](int i) { return _servos.at(i); }
+
    const std::string& error() const { return _error; } 
 };
 
@@ -65,6 +94,8 @@ int main() {
       std::cout << sr.error() << std::endl;
       return 0;
    }
+
+   sr[0].rev(0.5);
 
    return 0;
 }
