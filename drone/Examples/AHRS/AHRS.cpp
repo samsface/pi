@@ -31,143 +31,61 @@ chrt -f -p 99 PID
 #include <sys/time.h>
 #include "Navio/MPU9250.h"
 #include "AHRS.hpp"
+#include <vector>
+#include <thread>
+#include <chrono>
 
-// Objects
-
-MPU9250 imu;    // MPU9250
-AHRS    ahrs;   // Mahony AHRS
-
-// Sensor data
-
-float ax, ay, az;
-float gx, gy, gz;
-float mx, my, mz;
-
-// Orientation data
-
-float roll, pitch, yaw;
-
-// Timing data
-
-float offset[3];
-struct timeval tv;
-float dt, maxdt;
-float mindt = 0.01;
-unsigned long previoustime, currenttime;
-float dtsumm = 0;
-int isFirst = 1;
-
-// Network data
-
-int sockfd;
-struct sockaddr_in servaddr = {0};
-char sendline[80];
-
-//============================= Initial setup =================================
-
-void imuSetup()
+class gyro 
 {
-    //----------------------- MPU initialization ------------------------------
+   MPU9250 _imu;
+   AHRS _ahrs;
+   std::vector<float> _accel;
+   std::vector<float> _gyro;
+   std::vector<float> _mag;
+   std::chrono::high_resolution_clock::time_point _t0, _t1;
 
-    imu.initialize();
+   gyro() : _accel(3), _gyro(3), _mag(3) {
+      _imu.initialize();
 
-    //-------------------------------------------------------------------------
+      std::vector<float> offset(3);
+      for(int i = 0; i< 100; i++) {
+         _imu.getMotion6(&_accel[0], &_accel[1], &_accel[2], 
+                         &_gyro[0], &_gyro[1], &_gyro[2]);
+	 offset[0] -= _gyro[0]*0.0175;
+         offset[1] -= _gyro[1]*0.0175;
+         offset[2] -= _gyro[2]*0.0175;
+         std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      }
+      
+      _ahrs.setGyroOffset(offset[0]/100.0, offset[1]/100.0, offset[2]/100.0);
+   }
 
-	printf("Beginning Gyro calibration...\n");
-	for(int i = 0; i<100; i++)
-	{
-		imu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-		offset[0] += (-gx*0.0175);
-		offset[1] += (-gy*0.0175);
-		offset[2] += (-gz*0.0175);
-		usleep(10000);
-	}
-	offset[0]/=100.0;
-	offset[1]/=100.0;
-	offset[2]/=100.0;
+public:
+   static gyro& instance() {
+      static gyro i;
+      return i;
+   }
 
-	printf("Offsets are: %f %f %f\n", offset[0], offset[1], offset[2]);
-	ahrs.setGyroOffset(offset[0], offset[1], offset[2]);
-}
+   void imuLoop() {  
+      _t0 = _t1;
+      _t1 = std::chrono::high_resolution_clock::now();
+      auto dt = std::chrono::duration_cast<std::chrono::microseconds>(_t1-_t0).count();
+      if(dt < 1/1300.0) 
+         return;
 
-//============================== Main loop ====================================
+      _imu.getMotion6(&_accel[0], &_accel[1], &_accel[2], 
+                      &_gyro[0], &_gyro[1], &_gyro[2]);
+      _ahrs.updateIMU(_accel[0], _accel[1], _accel[2], 
+                      _gyro[0]*0.0175, _gyro[1]*0.0175, _gyro[2]*0.0175, dt);
 
-void imuLoop()
-{
-    //----------------------- Calculate delta time ----------------------------
-
-	gettimeofday(&tv,NULL);
-	previoustime = currenttime;
-	currenttime = 1000000 * tv.tv_sec + tv.tv_usec;
-	dt = (currenttime - previoustime) / 1000000.0;
-	if(dt < 1/1300.0) usleep((1/1300.0-dt)*1000000);
-        gettimeofday(&tv,NULL);
-        currenttime = 1000000 * tv.tv_sec + tv.tv_usec;
-	dt = (currenttime - previoustime) / 1000000.0;
-
-    //-------- Read raw measurements from the MPU and update AHRS --------------
-
-    // Accel + gyro.
-    imu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
-    ahrs.updateIMU(ax, ay, az, gx*0.0175, gy*0.0175, gz*0.0175, dt);
-
-    // Accel + gyro + mag. 
-    // Soft and hard iron calibration required for proper function.
-    /*
-    imu.getMotion9(&ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz);
-    ahrs.update(ax, ay, az, gx*0.0175, gy*0.0175, gz*0.0175, my, mx, -mz, dt);
-    */
-
-    //------------------------ Read Euler angles ------------------------------
-
-    ahrs.getEuler(&roll, &pitch, &yaw);
-
-    //------------------- Discard the time of the first cycle -----------------
-
-    if (!isFirst)
-    {
-    	if (dt > maxdt) maxdt = dt;
-    	if (dt < mindt) mindt = dt;
-    }
-    isFirst = 0;
-
-    //------------- Console and network output with a lowered rate ------------
-
-    dtsumm += dt;
-    if(dtsumm > 0.05)
-    {
-        // Console output
-        printf("ROLL: %+05.2f PITCH: %+05.2f YAW: %+05.2f PERIOD %.4fs RATE %dHz \n", roll, pitch, yaw * -1, dt, int(1/dt));
-
-        // Network output
-        sprintf(sendline,"%10f %10f %10f %10f %dHz\n", ahrs.getW(), ahrs.getX(), ahrs.getY(), ahrs.getZ(), int(1/dt));
-        sendto(sockfd, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
-
-        dtsumm = 0;
-    }
-}
+      // Soft and hard iron calibration required for proper function.
+      // imu.getMotion9(&ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz);
+      // ahrs.update(ax, ay, az, gx*0.0175, gy*0.0175, gz*0.0175, my, mx, -mz, dt);
+   }
+};
 
 //=============================================================================
 
-int main(int argc, char *argv[])
-{
-    //--------------------------- Network setup -------------------------------
-
-    sockfd = socket(AF_INET,SOCK_DGRAM,0);
-    servaddr.sin_family = AF_INET;
-
-    if (argc == 3)  {
-        servaddr.sin_addr.s_addr = inet_addr(argv[1]);
-        servaddr.sin_port = htons(atoi(argv[2]));
-    } else {
-        servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-        servaddr.sin_port = htons(7000);
-    }
-
-    //-------------------- IMU setup and main loop ----------------------------
-
-    imuSetup();
-
-    while(1)
-        imuLoop();
+int main(int argc, char *argv[]) {
+    gyro& g = gyro::instance();
 }
