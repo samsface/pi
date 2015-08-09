@@ -95,7 +95,7 @@ bool MPU9250::initialize(int sample_rate_div, int low_pass_filter)
         {0x80, MPUREG_PWR_MGMT_1},     // Reset Device
         {0x01, MPUREG_PWR_MGMT_1},     // Clock Source
         {0x00, MPUREG_PWR_MGMT_2},     // Enable Acc & Gyro
-        {low_pass_filter, MPUREG_CONFIG},         // Use DLPF set Gyroscope bandwidth 184Hz, temperature bandwidth 188Hz
+        {static_cast<uint8_t>(low_pass_filter), MPUREG_CONFIG},         // Use DLPF set Gyroscope bandwidth 184Hz, temperature bandwidth 188Hz
         {0x18, MPUREG_GYRO_CONFIG},    // +-2000dps
         {0x08, MPUREG_ACCEL_CONFIG},   // +-4G
         {0x09, MPUREG_ACCEL_CONFIG_2}, // Set Acc Data Rates, Enable Acc LPF , Bandwidth 184Hz
