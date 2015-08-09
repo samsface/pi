@@ -31,10 +31,10 @@ int main()
     while(1) {
         imu.getMotion9(&ax, &ay, &az, &gx, &gy, &gz, &mx, &my, &mz);
 
-        printf("Acc: %+05.3f %+05.3f %+05.3f ", ax, ay, az);
-        printf("Gyr: %+05.3f %+05.3f %+05.3f ", gx, gy, gz);
-		printf("Mag: %+05.3f %+05.3f %+05.3f\n", mx, my, mz);
+        //printf("Acc: %+05.3f %+05.3f %+05.3f ", ax, ay, az);
+        printf("Gyr: %+05.3f %+05.3f %+05.3f\n", gx, gy, gz);
+	//printf("Mag: %+05.3f %+05.3f %+05.3f\n", mx, my, mz);
 
-        sleep(0.5);
+        sleep(1);
     }
 }
