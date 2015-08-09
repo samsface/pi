@@ -44,7 +44,10 @@ public:
       }
       if(p > 1) p = 1;
       if(p < 0) p = 0;
-      _currentPWMms = _minPWMms + (_maxPWMms-_minPWMms)*p;
+      auto newPWMms = _minPWMms + (_maxPWMms-_minPWMms)*p;
+      if(newPWMms == _currentPWMms)
+         return;
+      _currentPWMms = newPWMms;
       _pwm.setPWMmS(_rcOut, _currentPWMms);    
       LOG_INFO("Servo:", _rcOut, "PWMms:", _currentPWMms);
    }
