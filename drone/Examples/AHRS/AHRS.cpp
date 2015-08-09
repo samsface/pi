@@ -109,7 +109,7 @@ void imuLoop()
     //-------- Read raw measurements from the MPU and update AHRS --------------
 
 
-    fprintf(stderr, "%f\n", dt);
+    fprintf(stderr, "dt: %f\n", dt);
 
     // Accel + gyro.
     imu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
@@ -139,7 +139,7 @@ void imuLoop()
 
     float y = ahrs.getY();
     float z = ahrs.getZ();
-    fprintf(stderr, "%f\n", 1.0-2.0*(y*y+z*z));
+    fprintf(stderr, "r[0][0]: %f\n", 1.0-2.0*(y*y+z*z));
 
     dtsumm += dt;
     if(dtsumm > 0.05)

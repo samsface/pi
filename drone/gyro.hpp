@@ -46,24 +46,25 @@ public:
    std::vector<std::vector<float>> rotation() {  
       _t0 = _t1;
       _t1 = std::chrono::high_resolution_clock::now();
-      auto dt = 0.000001*std::chrono::duration_cast<std::chrono::microseconds>(_t1-_t0).count();
-        
-      _imu.getMotion9(&_accel[0], &_accel[1], &_accel[2], 
+      auto dt = std::chrono::duration_cast<std::chrono::microseconds>(_t1-_t0).count()/1000000.0;
+      
+      _imu.getMotion9(&_accel[0], &_accel[1], &_accel[2],
                       &_gyro[0],  &_gyro[1],  &_gyro[2],
                       &_mag[0],   &_mag[1],   &_mag[2]);
 
+      _mag[0] = (_mag[0]-17.0317)/100; // Gauss, IMU output = micro Tesla
+      _mag[1] = (_mag[1]-25.7831)/100; // Gauss
+      _mag[2] = (_mag[2]+12.5051)/100; // Gauss
+
       _ahrs.update(_accel[0],       _accel[1],       _accel[2], 
                    _gyro[0]*0.0175, _gyro[1]*0.0175, _gyro[2]*0.0175,
-                   _mag[0],         _mag[1],         _mag[2],        
+                   _mag[0],         _mag[1],         _mag[2]*-1,        
                    dt);
-
-      std::cout << dt << std::endl;
 
       float x = _ahrs.getX();
       float y = _ahrs.getY();
       float z = _ahrs.getZ();
       float w = _ahrs.getW();
-
       #define scf(x) static_cast<float>(x)
       return {{ scf(1.0-2.0*(y*y+z*z)),  scf(2.0*(x*y+w*z)),      scf(2.0*(x*z-w*y))     },
               { scf(2.0*(x*y-w*z)),      scf(1.0-2.0*(x*x+z*z)),  scf(2.0*(y*z+w*x))     },

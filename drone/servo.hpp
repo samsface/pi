@@ -27,29 +27,24 @@ class servo
 {
    PCA9685 _pwm;
    int _rcOut;
-   float _minPWMms, _maxPWMms, _currentPWMms;
+   float _minPWMms, _maxPWMms, _power;
    std::string _error;
 public:   
    servo(int rcOut, float minPWMms, float maxPWMms, const PCA9685& pwm) :
    _rcOut(rcOut), 
    _minPWMms(minPWMms), 
    _maxPWMms(maxPWMms),
-   _currentPWMms(_minPWMms),
-   _pwm(pwm) {}
+   _pwm(pwm),
+   _power(0) {}
  
    void setPower(float p) {
-      if(!_error.empty()) {
-         LOG_ERROR(_error);
-         return;
-      }
+      if(!_error.empty()) return;
+      if(p == _power) return;
       if(p > 1) p = 1;
       if(p < 0) p = 0;
+      _power = p;
       auto newPWMms = _minPWMms + (_maxPWMms-_minPWMms)*p;
-      if(newPWMms == _currentPWMms)
-         return;
-      _currentPWMms = newPWMms;
-      _pwm.setPWMmS(_rcOut, _currentPWMms);    
-      LOG_INFO("Servo:", _rcOut, "PWMms:", _currentPWMms);
+      _pwm.setPWMmS(_rcOut, newPWMms);    
    }
 
    void rev(float p) {
@@ -57,6 +52,8 @@ public:
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
       setPower(0);
    }
+
+   float power() { return _power; }
 
    const std::string& error() const { return _error; } 
 };
