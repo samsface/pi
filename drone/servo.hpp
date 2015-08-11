@@ -75,7 +75,7 @@ class servoRail
 
          auto rcOutputs = { 4, 5, 6, 7};
          for(auto s : rcOutputs) 
-            _servos.push_back(std::move(servo(s+2, 1.250, 1.340, pwm)));
+            _servos.push_back(std::move(servo(s+2, 1.250, 1.46, pwm)));
       }
       else {
          _error = "Could not init pin driver. Are you root?";

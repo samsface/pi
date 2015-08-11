@@ -43,7 +43,7 @@ public:
       return i;
    }
 
-   std::vector<std::vector<float>> rotation() {  
+   std::vector<float> rotation() {  
       _t0 = _t1;
       _t1 = std::chrono::high_resolution_clock::now();
       auto dt = std::chrono::duration_cast<std::chrono::microseconds>(_t1-_t0).count()/1000000.0;
@@ -59,8 +59,13 @@ public:
       _ahrs.update(_accel[0],       _accel[1],       _accel[2], 
                    _gyro[0]*0.0175, _gyro[1]*0.0175, _gyro[2]*0.0175,
                    _mag[0],         _mag[1],         _mag[2]*-1,        
-                   dt);
+                   dt); 
+  
+      std::vector<float> r(3);
+      _ahrs.getEuler(&r[0], &r[1], &r[2]);
+      return r;
 
+      /*
       float x = _ahrs.getX();
       float y = _ahrs.getY();
       float z = _ahrs.getZ();
@@ -70,5 +75,6 @@ public:
               { scf(2.0*(x*y-w*z)),      scf(1.0-2.0*(x*x+z*z)),  scf(2.0*(y*z+w*x))     },
               { scf(2.0*(x*z+w*y)),      scf(2.0*(y*z-w*x)),      scf(1.0-2.0*(x*x+y*y)) }};
       #undef scf
+      */
    }
 };
