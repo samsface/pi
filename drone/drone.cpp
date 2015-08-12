@@ -1,61 +1,51 @@
 #include "servo.hpp"
 #include "gyro.hpp"
-#include "kisslog.hpp"
-#include "kissvec.hpp"
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <vector>
+#include "pid.hpp"
+#include <algorithm>
+
+const int ROLL= 0;
+const int PITCH = 1;
+const int YAW = 2;
+
+const int NORTH = 0;
+const int EAST = 1;
+const int SOUTH = 2;
+const int WEST = 3;
 
 int main() {
-   auto& sr = servoRail::instance();
-   if(!sr.error().empty()) {
-      LOG_ERROR(sr.error());
-      return 0;
-   }
-
-   int x = 0;
    auto& gy = gyro::instance();
-  
-   std::cout << "Zeroing gyroscope, stay still." << std::endl; 
-   auto r = gy.rotation();
-   while(r[1] > 0.1 ||  r[1] < -0.1) {
-      r = gy.rotation();   
-      std::cout << r[1] << std::endl;
-   }
+   auto& pi = pins::instance();
 
-   int sockfd;
-   struct sockaddr_in servaddr = {0};
-   char sendline[512];
-   sockfd = socket(AF_INET,SOCK_DGRAM,0);
-   servaddr.sin_family = AF_INET;
-   servaddr.sin_addr.s_addr = inet_addr("192.168.0.3");
-   servaddr.sin_port = htons(7000);  
+   std::vector<servo> servos = {
+      servo(4, 1.2, 1.5, pi.pwm),
+      servo(5, 1.2, 1.5, pi.pwm),
+      servo(6, 1.2, 1.5, pi.pwm),
+      servo(7, 1.2, 1.5, pi.pwm)
+   };
+
+   std::vector<pid> pids = {
+      pid(1, 1, 1),
+      pid(1, 1, 1),
+      pid(1, 1, 1)
+   };
+
+   std::vector<float> corrections = { 0, 0, 0 };
  
-   for(int i = 0; i < 1500; i++) {
+   while(true) {
       auto r = gy.rotation();
-      float ramp = 1;
-      //std::cout << r[0] << " " << r[1] << " " << r[2] << std::endl;
-      sr[0].setPower(sr[0].power()+(r[0] < 0 || r[1] > 0 ? ramp : -ramp )); 
-      sr[1].setPower(sr[1].power()+(r[0] > 0 || r[1] < 0 ? ramp : -ramp )); 
-      sr[2].setPower(sr[2].power()+(r[0] > 0 || r[1] > 0 ? ramp : -ramp )); 
-      sr[3].setPower(sr[3].power()+(r[0] < 0 || r[1] < 0 ? ramp : -ramp )); 
- 
-      //for(int i = 2; i < 3; i++) 
-        // sr[i].setPower(sr[i].power()+(rotations[i][1] < 0 ? 0.01 : -0.01 ));
-      /*
-      if(x++ > 100) {
-         sprintf(sendline, "%f %f %f %f %f %f %f %f %f %f %f %f\n",
-         a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2], d[0], d[1], d[2]);
-         sendto(sockfd, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr)); 
-         x = 0;
-      }
-      */
+      for(int i = 0; i < r.size(); i++)
+         corrections[i] = pids[i].compute(r[i], 0);
+      
+      servos[NORTH].incPower(corrections[PITCH] - corrections[YAW]);
+      servos[SOUTH].decPower(corrections[PITCH] - corrections[YAW]);
+      servos[WEST].incPower(corrections[PITCH] + corrections[YAW]);
+      servos[EAST].decPower(corrections[PITCH] + corrections[YAW]);
    }
 
-   sr[0].setPower(0);
-   sr[1].setPower(0);
-   sr[2].setPower(0);
-   sr[3].setPower(0);
-
+   for(auto& s : servos)
+      s.setPower(0);
 }

@@ -16,25 +16,32 @@ class gyro
 {
    MPU9250 _imu;
    AHRS _ahrs;
-   std::vector<float> _accel;
-   std::vector<float> _gyro;
-   std::vector<float> _mag;
+   std::vector<float> _accel, _gyro, _mag;
    std::chrono::high_resolution_clock::time_point _t0, _t1;
 
    gyro() : _accel(3), _gyro(3), _mag(3) {
       _imu.initialize();
+      calibrateGyro(); 
+      waitForGyroToZero();  
+   }
 
+   void calibrateGyro() {
       std::vector<float> offset(3);
       for(int i = 0; i< 100; i++) {
          _imu.getMotion6(&_accel[0], &_accel[1], &_accel[2], 
                          &_gyro[0],  &_gyro[1],  &_gyro[2]);
-	 offset[0] -= _gyro[0]*0.0175;
-         offset[1] -= _gyro[1]*0.0175;
-         offset[2] -= _gyro[2]*0.0175;
+         for(int i = 0; i < offset.size(); i++)
+            offset[i] -= _gyro[i]*0.0175;
          std::this_thread::sleep_for(std::chrono::microseconds(10000));
       }
       
       _ahrs.setGyroOffset(offset[0]/100.0, offset[1]/100.0, offset[2]/100.0);
+   }
+
+   void waitForGyroToZero() {
+      auto r = rotation();
+      while(r[1] > 1 && r[1] < -1)
+         r = rotation();
    }
 
 public:
@@ -64,17 +71,5 @@ public:
       std::vector<float> r(3);
       _ahrs.getEuler(&r[0], &r[1], &r[2]);
       return r;
-
-      /*
-      float x = _ahrs.getX();
-      float y = _ahrs.getY();
-      float z = _ahrs.getZ();
-      float w = _ahrs.getW();
-      #define scf(x) static_cast<float>(x)
-      return {{ scf(1.0-2.0*(y*y+z*z)),  scf(2.0*(x*y+w*z)),      scf(2.0*(x*z-w*y))     },
-              { scf(2.0*(x*y-w*z)),      scf(1.0-2.0*(x*x+z*z)),  scf(2.0*(y*z+w*x))     },
-              { scf(2.0*(x*z+w*y)),      scf(2.0*(y*z-w*x)),      scf(1.0-2.0*(x*x+y*y)) }};
-      #undef scf
-      */
-   }
+   }  
 };

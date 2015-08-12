@@ -1,0 +1,34 @@
+#include "servo.hpp"
+#include "gyro.hpp"
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <vector>
+#include "pid.hpp"
+#include <algorithm>
+
+int main() {
+   auto& gy = gyro::instance();
+   auto& pi = pins::instance();
+
+   std::vector<servo> servos = {
+      servo(4, 1.2, 1.5, pi.pwm),
+      servo(5, 1.2, 1.5, pi.pwm),
+      servo(6, 1.2, 1.5, pi.pwm),
+      servo(7, 1.2, 1.5, pi.pwm)
+   };
+
+   std::vector<pid> pids = {
+      pid(1, 1, 1),
+      pid(1, 1, 1),
+      pid(1, 1, 1)
+   }; 
+ 
+   while(true) {
+      auto r = gy.rotation();
+      std::vector<float> corrections;
+      std::transform(r.begin(), r.end(), pids.begin(), back_inserter(corrections), [](float f, const pid&){
+         
+      });
+   }
+}
