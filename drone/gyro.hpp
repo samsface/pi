@@ -40,8 +40,11 @@ class gyro
 
    void waitForGyroToZero() {
       auto r = rotation();
-      while(r[1] > 1 && r[1] < -1)
+      do {
          r = rotation();
+         std::cout << r[1] << std::endl;
+      }
+      while(r[1] > 0.1 || r[1] < -0.1);
    }
 
 public:

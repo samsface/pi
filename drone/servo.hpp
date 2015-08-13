@@ -21,7 +21,6 @@ public:
    _power(0) {}
  
    void setPower(float p) {
-      if(p == _power) return;
       if(p > 1) p = 1;
       if(p < 0) p = 0;
       _power = p;
