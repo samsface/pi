@@ -44,7 +44,7 @@ class gyro
          r = rotation();
          std::cout << r[1] << std::endl;
       }
-      while(r[1] > 0.1 || r[1] < -0.1);
+      while(r[1] > 15 || r[1] < -15);
    }
 
 public:

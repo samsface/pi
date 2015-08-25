@@ -16,12 +16,20 @@ const auto SOUTH = 1;
 const auto EAST = 2;
 const auto WEST = 3;
 
-const auto MAX_PWM = 1.34;
+auto MAX_PWM = 1.48;
 const auto MIN_PWM = 1.2;
 
-int main() {
+int main(int argc, char **argv) {
    auto& gy = gyro::instance();
    auto& pi = pins::instance();
+
+   auto k = atof(argv[1]);
+   if(k < 1.34 || k > 1.7) {
+      std::cout << "Max pulse width needs to be in range 1.34-1.7." << std::endl;
+      return 0;
+   }
+
+   MAX_PWM = k;
 
    std::vector<servo> servos = {
       servo(4, MIN_PWM, MAX_PWM, pi.pwm),
@@ -31,25 +39,26 @@ int main() {
    };
 
    std::vector<pid> pids = {
-      pid(1, 0, 0),
-      pid(1, 0, 0),
-      pid(1, 0, 0)
+      pid(0.01, 0.00000, 0.00000),
+      pid(0.01, 0.00000, 0.00000),
+      pid(0.01, 0.00000, 0.00000)
    };
 
    std::vector<float> corrections = { 0, 0, 0 };
  
-   for(int j = 0; j < 9000; j++) {
+   for(int j = 0; j < 5000; j++) {
       auto r = gy.rotation();
       for(int i = 0; i < r.size(); i++)
          corrections[i] = pids[i].compute(r[i], 0);
-      
-      std::cout << corrections[ROLL] << " " << corrections[PITCH] << " " << corrections[YAW] << " " << std::endl;
+     
+      std::cout << r[0] << " " << r[1] << " " << r[2] << std::endl;
+ 
       corrections[YAW] = 0;
-
-      servos[NORTH].incPower(corrections[PITCH] - corrections[YAW]);
-      servos[SOUTH].decPower(corrections[PITCH] - corrections[YAW]);
-      servos[WEST].incPower(corrections[ROLL] + corrections[YAW]);
-      servos[EAST].decPower(corrections[ROLL] + corrections[YAW]);
+      float dick = 10;
+      servos[NORTH].incPower(-1*corrections[PITCH]);
+      servos[SOUTH].incPower(corrections[PITCH]);
+     // servos[EAST].incPower(-1*corrections[ROLL] - dick);
+     //  servos[WEST].incPower(corrections[ROLL] + dick);
    }
 
    for(auto& s : servos)
