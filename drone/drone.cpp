@@ -35,7 +35,7 @@ struct drone
 
       std::vector<float> corrections = { 0, 0, 0 };
  
-      for(int j = 0; j < 5000; j++) {
+      while(true) {
          auto r = gy.rotation();
          corrections[ROLL] = _pids[ROLL].correct(r[ROLL], 0);
          corrections[PITCH] = _pids[PITCH].correct(r[PITCH], 0);
