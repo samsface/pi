@@ -25,10 +25,12 @@ struct drone
 {
    std::vector<Servo> _servos;
    std::vector<Pid> _pids;
+   bool _stop;
 
-   drone(decltype(_servos) servos, decltype(_pids) pids) : _servos(servos), _pids(pids) {}
+   drone(decltype(_servos) servos, decltype(_pids) pids) : _servos(servos), _pids(pids), _stop(false) {}
 
    void run() {
+      _stop = false;
       auto& gy = gyro::instance();
 
       std::vector<float> corrections = { 0, 0, 0 };
@@ -38,17 +40,24 @@ struct drone
          corrections[ROLL] = _pids[ROLL].correct(r[ROLL], 0);
          corrections[PITCH] = _pids[PITCH].correct(r[PITCH], 0);
          corrections[YAW] = _pids[YAW].correct(r[YAW], 0);
-      
+ 
+         if(_stop)
+            break;              
+
          _servos[NORTH].incPower(-1*corrections[PITCH]);
          _servos[SOUTH].incPower(corrections[PITCH]);
          _servos[EAST].incPower(-1*corrections[ROLL]);
          _servos[WEST].incPower(corrections[ROLL]);
       }
 
-      for(auto& s : _servos)
-         s.setPower(0);
+      stop();
    }
+
+   void stop() { _stop = true; for(auto& s: _servos) s.setPower(0); }
 };
+
+drone<servo, pid>* stupid = nullptr;
+void ting(int s) { if(stupid) stupid->stop(); }
 
 int main(int argc, char **argv) {
 
@@ -71,7 +80,13 @@ int main(int argc, char **argv) {
                          pid(pGain, iGain, dGain),
                          pid(pGain, iGain, dGain),
                          pid(pGain, iGain, dGain) }));
-   
-   d.run();
+   stupid = &d;
+
+   struct sigaction sigIntHandler;
+   sigIntHandler.sa_handler = ting;
+   sigemptyset(&sigIntHandler.sa_mask);  
+   sigIntHandler.sa_flags = 0;
+   sigaction(SIGINT, &sigIntHandler, NULL);
  
+   d.run();
 }
