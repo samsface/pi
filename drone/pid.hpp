@@ -9,12 +9,12 @@ public:
    {
    }
 
-   float compute(float input, float setpoint) {
+   float correct(float input, float setpoint) {
       auto now = std::chrono::high_resolution_clock::now();
       auto dt = std::chrono::duration_cast<std::chrono::microseconds>(now - _lastTime).count()/1000000.0;
       auto error = setpoint - input;
       _errSum += error * dt;
-      auto  dErr = (error - _lastErr) / dt;
+      auto dErr = (error - _lastErr) / dt;
       _lastErr = error;
       _lastTime = now;
 

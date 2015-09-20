@@ -42,16 +42,16 @@ int main(int argc, char **argv) {
    MAX_PWM = k;
 
    std::vector<servo> servos = {
-      servo(4, MIN_PWM, MAX_PWM, pi.pwm),
-      servo(5, MIN_PWM, MAX_PWM, pi.pwm),
-      servo(6, MIN_PWM, MAX_PWM, pi.pwm),
-      servo(7, MIN_PWM, MAX_PWM, pi.pwm)
+      servo(4, MIN_PWM, MAX_PWM, pi.pwm), // north
+      servo(5, MIN_PWM, MAX_PWM, pi.pwm), // south
+      servo(6, MIN_PWM, MAX_PWM, pi.pwm), // east
+      servo(7, MIN_PWM, MAX_PWM, pi.pwm)  // west
    };
 
    std::vector<pid> pids = {
-      pid(pGain, iGain, dGain),
-      pid(pGain, iGain, dGain),
-      pid(pGain, iGain, dGain)
+      pid(pGain, iGain, dGain), // roll
+      pid(pGain, iGain, dGain), // pitch
+      pid(pGain, iGain, dGain)  // yaw
    };
 
    abortseq([](){ std::cout << "FUCKYOUPAL" << std::endl; }); 
@@ -60,13 +60,10 @@ int main(int argc, char **argv) {
  
    for(int j = 0; j < 5000; j++) {
       auto r = gy.rotation();
-      for(int i = 0; i < r.size(); i++)
-         corrections[i] = pids[i].compute(r[i], 0);
-     
-      std::cout << r[0] << " " << r[1] << " " << r[2] << std::endl;
- 
-      corrections[YAW] = 0;
-      float dick = 10;
+      corrections[ROLL] = pids[ROLL].correct(r[ROLL], 0);
+      corrections[PITCH] = pids[PITCH].correct(r[PITCH], 0);
+      corrections[YAW] = pids[YAW].correct(r[YAW], 0);
+      
       servos[NORTH].incPower(-1*corrections[PITCH]);
       servos[SOUTH].incPower(corrections[PITCH]);
       servos[EAST].incPower(-1*corrections[ROLL]);
