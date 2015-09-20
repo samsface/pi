@@ -20,14 +20,37 @@ const auto WEST = 3;
 auto MAX_PWM = 1.48;
 const auto MIN_PWM = 1.2;
 
+template <typename Servo, typename Pid>
+struct drone 
+{
+   std::vector<Servo> _servos;
+   std::vector<Pid> _pids;
+
+   drone(decltype(_servos) servos, decltype(_pids) pids) : _servos(servos), _pids(pids) {}
+
+   void run() {
+      auto& gy = gyro::instance();
+
+      std::vector<float> corrections = { 0, 0, 0 };
+ 
+      for(int j = 0; j < 5000; j++) {
+         auto r = gy.rotation();
+         corrections[ROLL] = _pids[ROLL].correct(r[ROLL], 0);
+         corrections[PITCH] = _pids[PITCH].correct(r[PITCH], 0);
+         corrections[YAW] = _pids[YAW].correct(r[YAW], 0);
+      
+         _servos[NORTH].incPower(-1*corrections[PITCH]);
+         _servos[SOUTH].incPower(corrections[PITCH]);
+         _servos[EAST].incPower(-1*corrections[ROLL]);
+         _servos[WEST].incPower(corrections[ROLL]);
+      }
+
+      for(auto& s : _servos)
+         s.setPower(0);
+   }
+};
+
 int main(int argc, char **argv) {
-
-   auto& gy = gyro::instance();
-   auto& pi = pins::instance();
-
-   auto pGain = 0.0;
-   auto iGain = 0.0;
-   auto dGain = 0.0;
 
    auto k = atof(argv[1]);
    if(k < 1.34 || k > 1.7) {
@@ -35,41 +58,20 @@ int main(int argc, char **argv) {
       return 0;
    }
 
-   pGain = atof(argv[2]);
-   iGain = atof(argv[3]);
-   dGain = atof(argv[4]);
+   auto pGain = atof(argv[2]);
+   auto iGain = atof(argv[3]);
+   auto dGain = atof(argv[4]);
 
-   MAX_PWM = k;
-
-   std::vector<servo> servos = {
-      servo(4, MIN_PWM, MAX_PWM, pi.pwm), // north
-      servo(5, MIN_PWM, MAX_PWM, pi.pwm), // south
-      servo(6, MIN_PWM, MAX_PWM, pi.pwm), // east
-      servo(7, MIN_PWM, MAX_PWM, pi.pwm)  // west
-   };
-
-   std::vector<pid> pids = {
-      pid(pGain, iGain, dGain), // roll
-      pid(pGain, iGain, dGain), // pitch
-      pid(pGain, iGain, dGain)  // yaw
-   };
-
-   abortseq([](){ std::cout << "FUCKYOUPAL" << std::endl; }); 
+   drone<servo, pid> d(std::vector<servo>({ 
+                         servo(4, 1.2, k, pins::instance().pwm),
+                         servo(5, 1.2, k, pins::instance().pwm),
+                         servo(6, 1.2, k, pins::instance().pwm),
+                         servo(7, 1.2, k, pins::instance().pwm) }),
+                       std::vector<pid>({ 
+                         pid(pGain, iGain, dGain),
+                         pid(pGain, iGain, dGain),
+                         pid(pGain, iGain, dGain) }));
+   
+   d.run();
  
-   std::vector<float> corrections = { 0, 0, 0 };
- 
-   for(int j = 0; j < 5000; j++) {
-      auto r = gy.rotation();
-      corrections[ROLL] = pids[ROLL].correct(r[ROLL], 0);
-      corrections[PITCH] = pids[PITCH].correct(r[PITCH], 0);
-      corrections[YAW] = pids[YAW].correct(r[YAW], 0);
-      
-      servos[NORTH].incPower(-1*corrections[PITCH]);
-      servos[SOUTH].incPower(corrections[PITCH]);
-      servos[EAST].incPower(-1*corrections[ROLL]);
-      servos[WEST].incPower(corrections[ROLL]);
-   }
-
-   for(auto& s : servos)
-      s.setPower(0);
 }
