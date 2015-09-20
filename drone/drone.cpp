@@ -6,6 +6,7 @@
 #include <vector>
 #include "pid.hpp"
 #include <algorithm>
+#include "abort.hpp"
 
 const auto ROLL= 0;
 const auto PITCH = 1;
@@ -20,14 +21,23 @@ auto MAX_PWM = 1.48;
 const auto MIN_PWM = 1.2;
 
 int main(int argc, char **argv) {
+
    auto& gy = gyro::instance();
    auto& pi = pins::instance();
+
+   auto pGain = 0.0;
+   auto iGain = 0.0;
+   auto dGain = 0.0;
 
    auto k = atof(argv[1]);
    if(k < 1.34 || k > 1.7) {
       std::cout << "Max pulse width needs to be in range 1.34-1.7." << std::endl;
       return 0;
    }
+
+   pGain = atof(argv[2]);
+   iGain = atof(argv[3]);
+   dGain = atof(argv[4]);
 
    MAX_PWM = k;
 
@@ -39,11 +49,13 @@ int main(int argc, char **argv) {
    };
 
    std::vector<pid> pids = {
-      pid(0.01, 0.00000, 0.00000),
-      pid(0.01, 0.00000, 0.00000),
-      pid(0.01, 0.00000, 0.00000)
+      pid(pGain, iGain, dGain),
+      pid(pGain, iGain, dGain),
+      pid(pGain, iGain, dGain)
    };
 
+   abortseq([](){ std::cout << "FUCKYOUPAL" << std::endl; }); 
+ 
    std::vector<float> corrections = { 0, 0, 0 };
  
    for(int j = 0; j < 5000; j++) {
@@ -57,8 +69,8 @@ int main(int argc, char **argv) {
       float dick = 10;
       servos[NORTH].incPower(-1*corrections[PITCH]);
       servos[SOUTH].incPower(corrections[PITCH]);
-     // servos[EAST].incPower(-1*corrections[ROLL] - dick);
-     //  servos[WEST].incPower(corrections[ROLL] + dick);
+      servos[EAST].incPower(-1*corrections[ROLL]);
+      servos[WEST].incPower(corrections[ROLL]);
    }
 
    for(auto& s : servos)
