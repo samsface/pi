@@ -6,7 +6,6 @@
 #include <vector>
 #include "pid.hpp"
 #include <algorithm>
-#include "abort.hpp"
 
 const auto ROLL= 0;
 const auto PITCH = 1;
@@ -61,21 +60,40 @@ void ting(int s) { if(stupid) stupid->stop(); }
 
 int main(int argc, char **argv) {
 
-   auto k = atof(argv[1]);
-   if(k < 1.34 || k > 1.7) {
+   if(argc < 5) {
+      std::cout << "Invalid number of args." << std::endl;
+      return 0;
+   }
+
+   auto maxPwm = atof(argv[1]);
+   if(maxPwm < 1.34 || maxPwm > 1.7) {
       std::cout << "Max pulse width needs to be in range 1.34-1.7." << std::endl;
       return 0;
    }
 
    auto pGain = atof(argv[2]);
+   if(pGain < 0) {
+      std::cout << "Proportional gain needs to be larget than zero." << std::endl;
+      return 0;
+   }
+
    auto iGain = atof(argv[3]);
+   if(iGain < 0) {
+      std::cout << "Integral gain needs to be larget than zero." << std::endl;
+      return 0;
+   }
+
    auto dGain = atof(argv[4]);
+   if(dGain < 0) {
+      std::cout << "Derivative gain needs to be larget than zero." << std::endl;
+      return 0;
+   }
 
    drone<servo, pid> d(std::vector<servo>({ 
-                         servo(4, 1.2, k, pins::instance().pwm),
-                         servo(5, 1.2, k, pins::instance().pwm),
-                         servo(6, 1.2, k, pins::instance().pwm),
-                         servo(7, 1.2, k, pins::instance().pwm) }),
+                         servo(4, 1.2, maxPwm, pins::instance().pwm),
+                         servo(5, 1.2, maxPwm, pins::instance().pwm),
+                         servo(6, 1.2, maxPwm, pins::instance().pwm),
+                         servo(7, 1.2, maxPwm, pins::instance().pwm) }),
                        std::vector<pid>({ 
                          pid(pGain, iGain, dGain),
                          pid(pGain, iGain, dGain),
