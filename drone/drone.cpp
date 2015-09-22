@@ -6,6 +6,7 @@
 #include <vector>
 #include "pid.hpp"
 #include <algorithm>
+#include <signal.h>
 
 const auto ROLL= 0;
 const auto PITCH = 1;
@@ -36,6 +37,12 @@ struct drone
  
       while(true) {
          auto r = gy.rotation();
+
+         if(r[0] > 90 || r[0] < -90 || r[1] > 90 || r[1] < -90) {
+            std::cout << "Aborted, roll and pitch must stay in range -90 - 90." << std::endl;
+            stop();
+         }
+
          corrections[ROLL] = _pids[ROLL].correct(r[ROLL], 0);
          corrections[PITCH] = _pids[PITCH].correct(r[PITCH], 0);
          corrections[YAW] = _pids[YAW].correct(r[YAW], 0);
